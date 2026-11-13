@@ -84,13 +84,51 @@ class TestBVMTAPI(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIn("total_users", res.json())
 
+    def test_market_aaz_stocks(self):
+        res_login = self.client.post("/api/auth/login", json={
+            "email": "admin@bvmt.tn",
+            "password": "admin123"
+        })
+        token = res_login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        res = self.client.get("/api/market/stocks", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        stocks = res.json()
+        self.assertIsInstance(stocks, list)
+        self.assertGreater(len(stocks), 50)
+        first = stocks[0]
+        self.assertIn("ticker", first)
+        self.assertIn("last", first)
+        self.assertIn("change_pct", first)
+
+    def test_market_stock_detail(self):
+        res_login = self.client.post("/api/auth/login", json={
+            "email": "admin@bvmt.tn",
+            "password": "admin123"
+        })
+        token = res_login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        res = self.client.get("/api/market/stocks/ATL", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("stock", data)
+        self.assertIn("variations", data)
+        self.assertIn("history", data)
+        self.assertIn("indicators", data)
+
     def test_static_files_serving(self):
         res_html = self.client.get("/")
         self.assertEqual(res_html.status_code, 200)
-        self.assertIn("BVMT Assistant", res_html.text)
+        self.assertIn("BVMT Trading Assistant", res_html.text)
+        self.assertIn("react-app.jsx", res_html.text)
 
         res_css = self.client.get("/css/style.css")
         self.assertEqual(res_css.status_code, 200)
+
+        res_jsx = self.client.get("/js/react-app.jsx")
+        self.assertEqual(res_jsx.status_code, 200)
 
 if __name__ == "__main__":
     unittest.main()

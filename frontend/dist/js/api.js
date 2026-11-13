@@ -45,7 +45,7 @@ class APIClient {
 
             if (response.status === 401) {
                 this.setToken(null);
-                window.location.reload();
+                window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
                 return null;
             }
 
@@ -58,7 +58,7 @@ class APIClient {
             return data;
         } catch (error) {
             if (error.message === 'Failed to fetch') {
-                throw new Error('Cannot connect to server. Please check if the API is running.');
+                throw new Error('Cannot connect to server. Please ensure backend is running.');
             }
             throw error;
         }
@@ -92,6 +92,7 @@ class APIClient {
         const data = await this.post('/auth/login', { email, password });
         if (data && data.access_token) {
             this.setToken(data.access_token);
+            window.dispatchEvent(new CustomEvent('auth-changed', { detail: data.user }));
         }
         return data;
     }
@@ -102,12 +103,39 @@ class APIClient {
         });
         if (data && data.access_token) {
             this.setToken(data.access_token);
+            window.dispatchEvent(new CustomEvent('auth-changed', { detail: data.user }));
         }
         return data;
     }
 
     async getMe() {
         return this.get('/auth/me');
+    }
+
+    // ─── Market & Stocks A-Z ─────────────────────────────────────
+
+    async getStocks(refresh = false) {
+        return this.get(`/market/stocks${refresh ? '?refresh=true' : ''}`);
+    }
+
+    async getStockDetail(ticker, days = 180) {
+        return this.get(`/market/stocks/${encodeURIComponent(ticker)}?days=${days}`);
+    }
+
+    async getMarketOverview() {
+        return this.get('/market/overview');
+    }
+
+    async getQuote(ticker) {
+        return this.get(`/market/${encodeURIComponent(ticker)}/quote`);
+    }
+
+    async getHistory(ticker, days = 180) {
+        return this.get(`/market/${encodeURIComponent(ticker)}/history?days=${days}`);
+    }
+
+    async calculateCost(data) {
+        return this.post('/market/cost-calculator', data);
     }
 
     // ─── Signals ─────────────────────────────────────────────────
@@ -132,24 +160,6 @@ class APIClient {
         return this.get(`/signals/${id}`);
     }
 
-    // ─── Market ──────────────────────────────────────────────────
-
-    async getMarketOverview() {
-        return this.get('/market/overview');
-    }
-
-    async getQuote(ticker) {
-        return this.get(`/market/${ticker}/quote`);
-    }
-
-    async getHistory(ticker, days = 180) {
-        return this.get(`/market/${ticker}/history?days=${days}`);
-    }
-
-    async calculateCost(data) {
-        return this.post('/market/cost-calculator', data);
-    }
-
     // ─── Watchlist ───────────────────────────────────────────────
 
     async getWatchlist() {
@@ -161,7 +171,7 @@ class APIClient {
     }
 
     async removeFromWatchlist(ticker) {
-        return this.del(`/watchlist/${ticker}`);
+        return this.del(`/watchlist/${encodeURIComponent(ticker)}`);
     }
 
     // ─── Admin ───────────────────────────────────────────────────

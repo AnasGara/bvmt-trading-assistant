@@ -1,9 +1,12 @@
 import logging
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.auth import get_current_user
 from src.api.models import MarketQuote, MarketHistory, TickerOverview, CostRequest, CostBreakdown
+from src.data.data_fetcher import fetch_aaz_stocks, fetch_stock_variations, fetch_equity_history
+from src.engine.indicators import compute_technical_indicators
+from src.storage.db import get_latest_signals
 from config.settings import DEFAULT_WATCHLIST, TICKER_NAMES
 
 logger = logging.getLogger("BVMT_API")
@@ -11,13 +14,108 @@ logger = logging.getLogger("BVMT_API")
 router = APIRouter(prefix="/api/market", tags=["Market Data"])
 
 
+@router.get("/stocks", response_model=List[Dict[str, Any]])
+async def list_aaz_stocks(
+    refresh: bool = Query(False),
+    _user: dict = Depends(get_current_user)
+):
+    """
+    Returns the complete list of all stocks traded on BVMT from Ilboursa A-Z
+    (https://www.ilboursa.com/marches/aaz)
+    """
+    stocks = fetch_aaz_stocks(force_refresh=refresh)
+    return stocks
+
+
+@router.get("/stocks/{ticker}")
+async def get_stock_detail(
+    ticker: str,
+    days: int = Query(180, ge=14, le=365),
+    _user: dict = Depends(get_current_user)
+):
+    """
+    Returns full stock details including:
+    - Current quote metrics (open, high, low, last, volume, variation)
+    - Historical variation table (1 week, 1 month, YTD, 1 year, 3 years, 5 years)
+    - OHLCV price history & technical indicators (SMA20, SMA50, RSI14)
+    - Latest active trading signal (if any)
+    """
+    symbol = ticker.upper().strip()
+
+    # 1. Look up live quote from A-Z list
+    all_stocks = fetch_aaz_stocks()
+    quote = next((s for s in all_stocks if s["ticker"].upper() == symbol), None)
+
+    # 2. Historical variations
+    variations = fetch_stock_variations(symbol)
+
+    # 3. OHLCV history with indicators
+    df = fetch_equity_history(symbol, days=days)
+    history_records = []
+    current_rsi = None
+    current_sma_fast = None
+    current_sma_slow = None
+
+    if df is not None and not df.empty:
+        data = compute_technical_indicators(df)
+        for _, row in data.iterrows():
+            history_records.append({
+                "date": str(row.get("Date", ""))[:10],
+                "close": round(float(row["Close"]), 3),
+                "open": round(float(row.get("Open", 0)), 3),
+                "high": round(float(row.get("High", 0)), 3),
+                "low": round(float(row.get("Low", 0)), 3),
+                "volume": float(row.get("Vol", 0)),
+                "rsi": round(float(row.get("RSI_14", 0)), 1),
+                "sma_20": round(float(row.get("SMA_20", 0)), 3),
+                "sma_50": round(float(row.get("SMA_50", 0)), 3),
+            })
+        latest_row = data.iloc[-1]
+        current_rsi = round(float(latest_row.get("RSI_14", 0)), 1)
+        current_sma_fast = round(float(latest_row.get("SMA_20", 0)), 3)
+        current_sma_slow = round(float(latest_row.get("SMA_50", 0)), 3)
+
+        if not quote:
+            # Fallback quote from history if not in A-Z table
+            prev_close = float(data.iloc[-2]["Close"]) if len(data) >= 2 else float(latest_row["Close"])
+            close_price = float(latest_row["Close"])
+            chg = ((close_price - prev_close) / prev_close * 100) if prev_close > 0 else 0.0
+            quote = {
+                "ticker": symbol,
+                "name": TICKER_NAMES.get(symbol, symbol),
+                "last": round(close_price, 3),
+                "open": round(float(latest_row.get("Open", 0)), 3),
+                "high": round(float(latest_row.get("High", 0)), 3),
+                "low": round(float(latest_row.get("Low", 0)), 3),
+                "volume_shares": int(latest_row.get("Vol", 0)),
+                "volume_tnd": 0.0,
+                "change_pct": round(chg, 2),
+                "cotation_url": f"https://www.ilboursa.com/marches/cotation_{symbol}"
+            }
+
+    if not quote and not history_records:
+        raise HTTPException(status_code=404, detail=f"Stock '{symbol}' not found on BVMT")
+
+    # 4. Check active signals
+    latest_signals = {s["ticker"]: s for s in get_latest_signals()}
+    sig = latest_signals.get(symbol)
+
+    return {
+        "stock": quote,
+        "variations": variations,
+        "indicators": {
+            "rsi": current_rsi,
+            "sma_20": current_sma_fast,
+            "sma_50": current_sma_slow,
+        },
+        "signal": sig,
+        "history": history_records
+    }
+
+
 @router.get("/overview", response_model=list[TickerOverview])
 async def market_overview(_user: dict = Depends(get_current_user)):
-    """Returns a snapshot of all watched tickers with latest price + signal."""
-    from src.data.data_fetcher import fetch_equity_history
-    from src.engine.indicators import compute_technical_indicators
-    from src.storage.db import get_latest_signals
-
+    """Returns a snapshot of watched tickers with latest price + signal."""
     latest_signals = {s["ticker"]: s for s in get_latest_signals()}
     results = []
 
@@ -56,8 +154,6 @@ async def market_overview(_user: dict = Depends(get_current_user)):
 
 @router.get("/{ticker}/quote", response_model=MarketQuote)
 async def get_quote(ticker: str, _user: dict = Depends(get_current_user)):
-    from src.data.data_fetcher import fetch_equity_history
-
     df = fetch_equity_history(ticker, days=10)
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data available for {ticker.upper()}")
@@ -87,9 +183,6 @@ async def get_history(
     days: int = Query(180, ge=7, le=365),
     _user: dict = Depends(get_current_user)
 ):
-    from src.data.data_fetcher import fetch_equity_history
-    from src.engine.indicators import compute_technical_indicators
-
     df = fetch_equity_history(ticker, days=days)
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No historical data for {ticker.upper()}")
