@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 # Telegram Configuration
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "9018911069:AAGs15XzAwREQr_qEkIK5pWn1tBcLP--MxY")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
 # Database
@@ -30,6 +30,15 @@ SMA_FAST = int(os.getenv("SMA_FAST", "20"))
 SMA_SLOW = int(os.getenv("SMA_SLOW", "50"))
 VOLUME_SPIKE_FACTOR = float(os.getenv("VOLUME_SPIKE_FACTOR", "1.5"))
 
+# JWT Authentication
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "bvmt-secret-key-change-in-production-2024")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
+
+# Admin Defaults
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bvmt.tn")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
 # Default Watchlist of major liquid equities on BVMT (Ilboursa tickers)
 DEFAULT_WATCHLIST = [
     "BIAT",      # Banque Internationale Arabe de Tunisie
@@ -48,3 +57,22 @@ DEFAULT_WATCHLIST = [
     "ARTES",     # ARTES
     "DH"         # Délice Holding
 ]
+
+# Ticker display names
+TICKER_NAMES = {
+    "BIAT": "Banque Internationale Arabe de Tunisie",
+    "SFBT": "Société Frigorifique et Brasserie de Tunis",
+    "TJARI": "Attijari Bank",
+    "BT": "Banque de Tunisie",
+    "SAH": "SAH Lilas",
+    "CC": "Carthage Cement",
+    "TPR": "Tunisie Profilés Aluminium",
+    "OTH": "One Tech Holding",
+    "ECYCL": "Euro-Cycles",
+    "UIB": "Union Internationale de Banques",
+    "BNA": "Banque Nationale Agricole",
+    "BH": "BH Bank",
+    "AB": "Amen Bank",
+    "ARTES": "ARTES Automobiles",
+    "DH": "Délice Holding",
+}

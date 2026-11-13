@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BVMT Trading Assistant</title>
+    <meta name="description" content="Automated quantitative trading assistant for the Bourse de Tunis">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="auth-screen">
+            <div class="auth-background">
+                <div class="auth-grid"></div>
+            </div>
+            <div class="auth-card">
+                <div class="auth-logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h1>BVMT Assistant</h1>
+                    <p class="auth-subtitle">Bourse de Tunis · Trading Intelligence</p>
+                </div>
+
+                <div id="login-form" class="auth-form">
+                    <h2>Sign In</h2>
+                    <div class="form-group">
+                        <label for="login-email"><i class="fas fa-envelope"></i> Email</label>
+                        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password"><i class="fas fa-lock"></i> Password</label>
+                        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                    <div id="login-error" class="form-error hidden"></div>
+                    <button id="login-btn" class="btn btn-primary btn-full" onclick="handleLogin()">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </button>
+                    <p class="auth-switch">Don't have an account? <a href="#" onclick="showRegister()">Create one</a></p>
+                </div>
+
+                <div id="register-form" class="auth-form hidden">
+                    <h2>Create Account</h2>
+                    <div class="form-group">
+                        <label for="reg-name"><i class="fas fa-user"></i> Full Name</label>
+                        <input type="text" id="reg-name" placeholder="Your name">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email"><i class="fas fa-envelope"></i> Email</label>
+                        <input type="email" id="reg-email" placeholder="you@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password"><i class="fas fa-lock"></i> Password</label>
+                        <input type="password" id="reg-password" placeholder="Min 6 characters">
+                    </div>
+                    <div id="register-error" class="form-error hidden"></div>
+                    <button id="register-btn" class="btn btn-primary btn-full" onclick="handleRegister()">
+                        <i class="fas fa-user-plus"></i> Create Account
+                    </button>
+                    <p class="auth-switch">Already have an account? <a href="#" onclick="showLogin()">Sign in</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="dashboard hidden">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <div class="sidebar-logo">
+                        <i class="fas fa-chart-line"></i>
+                        <span>BVMT</span>
+                    </div>
+                    <button class="sidebar-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item active" data-page="overview" onclick="navigate('overview')">
+                        <i class="fas fa-th-large"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="market" onclick="navigate('market')">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Market Overview</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="signals" onclick="navigate('signals')">
+                        <i class="fas fa-bolt"></i>
+                        <span>Signals</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="watchlist" onclick="navigate('watchlist')">
+                        <i class="fas fa-star"></i>
+                        <span>Watchlist</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="calculator" onclick="navigate('calculator')">
+                        <i class="fas fa-calculator"></i>
+                        <span>Cost Calculator</span>
+                    </a>
+
+                    <div class="nav-divider" id="admin-divider" style="display:none"></div>
+                    <div class="nav-label" id="admin-label" style="display:none">Administration</div>
+
+                    <a href="#" class="nav-item" data-page="admin-users" id="nav-admin-users" style="display:none" onclick="navigate('admin-users')">
+                        <i class="fas fa-users-cog"></i>
+                        <span>User Management</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="admin-screener" id="nav-admin-screener" style="display:none" onclick="navigate('admin-screener')">
+                        <i class="fas fa-robot"></i>
+                        <span>Screener Control</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="admin-alerts" id="nav-admin-alerts" style="display:none" onclick="navigate('admin-alerts')">
+                        <i class="fas fa-bell"></i>
+                        <span>Alert History</span>
+                    </a>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="user-info">
+                        <div class="user-avatar" id="user-avatar">A</div>
+                        <div class="user-details">
+                            <span class="user-name" id="user-name">User</span>
+                            <span class="user-role" id="user-role">user</span>
+                        </div>
+                    </div>
+                    <button class="btn-icon" onclick="handleLogout()" title="Sign Out">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <header class="top-bar">
+                    <div class="top-bar-left">
+                        <button class="sidebar-toggle-mobile" onclick="toggleSidebar()">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <h2 id="page-title">Dashboard</h2>
+                    </div>
+                    <div class="top-bar-right">
+                        <div class="market-status" id="market-status">
+                            <span class="status-dot"></span>
+                            <span>Market Closed</span>
+                        </div>
+                        <button class="btn btn-sm btn-outline" onclick="refreshCurrentPage()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </header>
+
+                <div class="content" id="content">
+                    <!-- Dynamic page content injected here -->
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/pages.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

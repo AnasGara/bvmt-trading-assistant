@@ -1,24 +1,45 @@
 # BVMT Trading Assistant (Bourse de Tunis)
 
-An automated quantitative trading assistant and screener for the **Bourse des Valeurs Mobilières de Tunis (BVMT)**. It computes technical indicators, generates alpha signals, calculates true net ROI after broker commissions & CEA tax shield benefits, and delivers real-time notifications via Telegram.
+An automated quantitative trading assistant, REST API backend, and modern web dashboard for the **Bourse des Valeurs Mobilières de Tunis (BVMT)**. It computes technical indicators, generates alpha signals, calculates true net ROI after broker commissions & CEA tax shield benefits, provides an admin and user dashboard, and delivers real-time notifications via Telegram.
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features
 
-* **Live Market Ingestion**: Direct historical & daily quote parser fetching OHLCV data for all major BVMT equities (`BIAT`, `SFBT`, `TJARI`, `BT`, `SAH`, `TPR`, `OTH`, `DH`, etc.).
-* **Technical Alpha Engine**:
-  * **Golden Cross**: 20-day SMA crossing above 50-day SMA (Trend Reversal).
-  * **RSI Oversold Bounce**: RSI(14) recovering from oversold conditions (<30).
-  * **Volume Breakout**: Volume > 1.5x 20-day average volume with positive momentum.
-  * **Overbought Warning**: RSI(14) > 70 caution alert.
-* **True-Cost Financial Logic**:
-  * Broker Commission (default: `0.60%`)
-  * BVMT & STICODEVAM exchange fees (`0.15%`)
-  * TVA on brokerage commission (`19%`)
-  * **CEA (*Compte d'Épargne en Actions*) Tax Shield**: 0% capital gains tax vs standard 10% withholding.
-* **SQLite State Persistence (`bvmt_state.db`)**: Tracks signals and avoids duplicate alerts within 24 hours.
-* **Telegram Delivery**: Instant push alerts with target prices, stop-loss levels, and net returns.
+### 🌐 Frontend Dashboard (UI / UX)
+- **Modern Dark Theme**: Financial terminal aesthetics with high-contrast emerald/teal accents, responsive layout, and mobile-friendly drawer.
+- **Real-Time Market Status**: Live indicator tracking BVMT trading session hours (Monday–Friday 09:00–14:15 CET).
+- **Executive Overview**: Total signals, today's signals, Buy/Sell/Watch distribution charts, and quick-action launcher.
+- **Market Screener View**: Ticker cards showing prices, daily percentage change, volume, RSI gauge bars, and active alpha signals.
+- **Interactive Signals Feed**: Full historical signals table with type badges, target price, stop-loss, and multi-parameter filters (Ticker, Direction, Signal Type).
+- **Personal Watchlist**: Custom watchlist management with instant add/remove of tracked BVMT equities.
+- **True-Cost Trade Calculator**: Interactive calculator modeling gross ROI vs net profit accounting for broker fees, TVA, and **Tunisian CEA (0% tax) tax shield savings**.
+- **Admin Control Panel**:
+  - **User Management**: View registered users, update roles (`user` ↔ `admin`), and delete accounts.
+  - **Screener Control**: Trigger manual screener runs in the background, view run execution history and duration metrics.
+  - **Alert Audit Log**: Complete history of Telegram alerts dispatched with timestamps.
+
+### ⚡ Backend API (FastAPI)
+- **High-Performance Async REST API** built with FastAPI and Pydantic v2.
+- **JWT Authentication & RBAC**: Secure JSON Web Token authentication with bcrypt password hashing and role-based permissions (`admin` vs `user`).
+- **Interactive API Documentation**: Swagger UI at `/api/docs` and ReDoc at `/api/redoc`.
+- **Automated APScheduler**: Built-in cron scheduler running the screening pipeline every weekday at 14:30 CET (13:30 UTC) after market close.
+- **Dual Serving**: FastAPI serves both the REST API endpoints (`/api/...`) and the production SPA frontend (`/`).
+
+### 📊 Quantitative Alpha Engine & Cost Model
+- **Equities Ingested**: `BIAT`, `SFBT`, `TJARI`, `BT`, `SAH`, `CC`, `TPR`, `OTH`, `ECYCL`, `UIB`, `BNA`, `BH`, `AB`, `ARTES`, `DH`.
+- **Alpha Signals**:
+  - **Golden Cross**: 20-day SMA crossing above 50-day SMA (Bullish reversal).
+  - **RSI Oversold Bounce**: RSI(14) recovering from oversold territory (<30).
+  - **Volume Breakout**: Volume > 1.5x 20-day average volume with positive momentum.
+  - **Death Cross**: Bearish trend continuation (SMA 20 crossing below SMA 50).
+  - **Overbought Warning**: RSI(14) > 70 caution alert.
+- **True-Cost Financial Modeling**:
+  - Broker Commission: `0.60%`
+  - BVMT & STICODEVAM exchange duties: `0.15%`
+  - TVA on broker commission: `19%`
+  - **CEA (*Compte d'Épargne en Actions*) Tax Shield**: 0% capital gains tax vs standard 10% withholding.
+- **Bilingual Telegram Notifications**: Auto-formatted HTML notifications delivered in English and Arabic.
 
 ---
 
@@ -28,8 +49,18 @@ An automated quantitative trading assistant and screener for the **Bourse des Va
 bvmt-assister/
 │
 ├── config/
-│   └── settings.py          # Watchlist, fee rates, technical parameters
+│   └── settings.py          # Watchlist, fee rates, technical & JWT settings
 ├── src/
+│   ├── api/
+│   │   ├── app.py           # FastAPI app, CORS, static mounting & APScheduler
+│   │   ├── auth.py          # JWT tokens & bcrypt password hashing
+│   │   ├── models.py        # Pydantic schemas (Request/Response validation)
+│   │   └── routes/
+│   │       ├── admin.py     # Admin stats, user management & settings
+│   │       ├── market.py    # Market overview, quotes & cost calculator
+│   │       ├── screener.py  # Manual trigger & run history
+│   │       ├── signals.py   # Signal queries, filters & pagination
+│   │       └── watchlist.py # User watchlist CRUD
 │   ├── data/
 │   │   └── data_fetcher.py  # Live BVMT OHLCV market data parser
 │   ├── engine/
@@ -38,56 +69,75 @@ bvmt-assister/
 │   ├── finance/
 │   │   └── cost_model.py    # True-Cost brokerage, TVA & CEA tax calculator
 │   ├── storage/
-│   │   └── db.py            # SQLite state manager & alert deduplication
+│   │   └── db.py            # SQLite state persistence & user management
 │   └── alerts/
-│       └── telegram_bot.py  # Telegram HTML notification dispatcher
+│       └── telegram_bot.py  # Bilingual Telegram HTML notifications
+│
+├── frontend/
+│   └── dist/
+│       ├── index.html       # Single-page application UI
+│       ├── css/
+│       │   └── style.css    # Modern dark design system
+│       └── js/
+│           ├── api.js       # API client & JWT storage
+│           ├── app.js       # App controller & auth navigation
+│           └── pages.js     # Reactive page renderers
 │
 ├── tests/
-│   └── test_engine.py       # Unit test suite
-├── .env                     # Bot token, Chat ID, and fee configuration
-├── main.py                  # Screener entrypoint
-├── run_screener.bat         # 1-click execution script for Windows
-└── requirements.txt
+│   ├── test_engine.py       # Engine & finance unit tests
+│   └── test_api.py          # API & authentication integration tests
+├── .env                     # Configuration credentials
+├── run_server.bat           # 1-click Web Dashboard & API launcher
+├── run_screener.bat         # 1-click CLI screener script
+├── Dockerfile               # Production container definition
+├── docker-compose.yml       # Production Compose stack
+└── requirements.txt         # Python dependencies
 ```
 
 ---
 
-## ⚙️ Configuration (`.env`)
+## ⚡ Quick Start
 
-```env
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_ID=your_chat_id_here
+### 1. Launch the Full Web App & API Server
 
-BROKER_FEE_PCT=0.006          # 0.6% standard broker fee
-EXCHANGE_FEE_PCT=0.0015       # 0.15% BVMT duties
-TVA_PCT=0.19                  # 19% TVA on commission
-USE_CEA_TAX_SHIELD=true       # true = CEA account (0% tax)
-```
-
----
-
-## 🧪 Running Manually
-
-Double-click `run_screener.bat` or run:
+Double-click `run_server.bat` or run in terminal:
 
 ```bash
-python main.py
+python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-To run tests:
+- **Web Dashboard**: [http://localhost:8000](http://localhost:8000)
+- **Interactive API Docs (Swagger)**: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
+- **Alternative Docs (ReDoc)**: [http://localhost:8000/api/redoc](http://localhost:8000/api/redoc)
+
+### 2. Default Admin Credentials
+
+| Field | Value |
+| :--- | :--- |
+| **Email** | `admin@bvmt.tn` |
+| **Password** | `admin123` |
+| **Role** | `admin` (Full access to User Management, Screener Control, and Alerts) |
+
+*You can also register a standard `user` account directly from the frontend login screen.*
+
+---
+
+## 🧪 Testing
+
+To run the complete test suite (unit and integration tests):
+
 ```bash
 python -m unittest discover tests
 ```
 
 ---
 
-## ⏰ Automated Daily Scheduling (Windows Task Scheduler)
+## 🐳 Docker Deployment (Production Ready)
 
-BVMT closes around 14:15 CET, with fixings finalized by **14:30 CET**. To run automatically Monday to Friday:
+To deploy with Docker Compose:
 
-1. Open **Windows Task Scheduler** (`taskschd.msc`).
-2. Click **Create Basic Task...**
-3. Name: `BVMT Trading Screener`
-4. Trigger: **Weekly** -> Select **Monday to Friday** at **14:30**.
-5. Action: **Start a program** -> Browse to `run_screener.bat`.
-6. Finish.
+```bash
+docker-compose up -d --build
+```
+
+The container includes a built-in healthcheck verifying `/api/health` every 30 seconds.

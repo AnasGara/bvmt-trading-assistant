@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  bvmt-assistant:
+    build: .
+    container_name: bvmt-trading-assistant
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - BROKER_FEE_PCT=0.006
+      - EXCHANGE_FEE_PCT=0.0015
+      - TVA_PCT=0.19
+      - USE_CEA_TAX_SHIELD=true
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-bvmt-production-secret-key-2024}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@bvmt.tn}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+    volumes:
+      - bvmt-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  bvmt-data:
