@@ -660,13 +660,13 @@ const StocksAAZView = ({ onSelectStock, watchlist = [], onToggleWatchlist }) => 
                                     <th onClick={() => handleSort('change_pct')} className="sortable-th text-center">
                                         Variation {sortBy === 'change_pct' && (sortOrder === 'asc' ? '▲' : '▼')}
                                     </th>
-                                    <th className="text-right">Ouverture</th>
-                                    <th className="text-right">+ Haut</th>
-                                    <th className="text-right">+ Bas</th>
-                                    <th onClick={() => handleSort('volume_shares')} className="sortable-th text-right">
+                                    <th className="text-right col-hide-md">Ouverture</th>
+                                    <th className="text-right col-hide-sm">+ Haut</th>
+                                    <th className="text-right col-hide-sm">+ Bas</th>
+                                    <th onClick={() => handleSort('volume_shares')} className="sortable-th text-right col-hide-md">
                                         Volume (Titres) {sortBy === 'volume_shares' && (sortOrder === 'asc' ? '▲' : '▼')}
                                     </th>
-                                    <th className="text-right">Volume (DT)</th>
+                                    <th className="text-right col-hide-sm">Volume (DT)</th>
                                     <th style={{ width: '80px', textAlign: 'center' }}>Action</th>
                                 </tr>
                             </thead>
@@ -692,11 +692,11 @@ const StocksAAZView = ({ onSelectStock, watchlist = [], onToggleWatchlist }) => 
                                             <td className="text-center">
                                                 <VariationBadge pct={stock.change_pct} />
                                             </td>
-                                            <td className="text-right">{formatPrice(stock.open)}</td>
-                                            <td className="text-right text-up">{formatPrice(stock.high)}</td>
-                                            <td className="text-right text-down">{formatPrice(stock.low)}</td>
-                                            <td className="text-right font-mono">{formatNumber(stock.volume_shares)}</td>
-                                            <td className="text-right font-mono">{formatNumber(stock.volume_tnd)}</td>
+                                            <td className="text-right col-hide-md">{formatPrice(stock.open)}</td>
+                                            <td className="text-right text-up col-hide-sm">{formatPrice(stock.high)}</td>
+                                            <td className="text-right text-down col-hide-sm">{formatPrice(stock.low)}</td>
+                                            <td className="text-right font-mono col-hide-md">{formatNumber(stock.volume_shares)}</td>
+                                            <td className="text-right font-mono col-hide-sm">{formatNumber(stock.volume_tnd)}</td>
                                             <td className="text-center" onClick={(e) => e.stopPropagation()}>
                                                 <button
                                                     className="btn btn-sm btn-outline"
@@ -892,10 +892,10 @@ const DashboardOverview = ({ onNavigate, onSelectStock }) => {
                                     <th>Signal</th>
                                     <th>Action</th>
                                     <th>Cours Signal</th>
-                                    <th>RSI</th>
-                                    <th>Objectif</th>
-                                    <th>Stop-Loss</th>
-                                    <th>Date</th>
+                                    <th className="col-hide-sm">RSI</th>
+                                    <th className="col-hide-sm">Objectif</th>
+                                    <th className="col-hide-md">Stop-Loss</th>
+                                    <th className="col-hide-sm">Date</th>
                                     <th>Détail</th>
                                 </tr>
                             </thead>
@@ -914,10 +914,10 @@ const DashboardOverview = ({ onNavigate, onSelectStock }) => {
                                             <DirectionBadge direction={s.direction} />
                                         </td>
                                         <td style={{ fontWeight: 700 }}>{formatPrice(s.price)}</td>
-                                        <td>{s.rsi ? s.rsi.toFixed(1) : '—'}</td>
-                                        <td className="text-up font-bold">{s.target_price ? formatPrice(s.target_price) : '—'}</td>
-                                        <td className="text-down">{s.stop_loss ? formatPrice(s.stop_loss) : '—'}</td>
-                                        <td style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{timeAgo(s.created_at)}</td>
+                                        <td className="col-hide-sm">{s.rsi ? s.rsi.toFixed(1) : '—'}</td>
+                                        <td className="text-up font-bold col-hide-sm">{s.target_price ? formatPrice(s.target_price) : '—'}</td>
+                                        <td className="text-down col-hide-md">{s.stop_loss ? formatPrice(s.stop_loss) : '—'}</td>
+                                        <td className="col-hide-sm" style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{timeAgo(s.created_at)}</td>
                                         <td>
                                             <div style={{ display: 'flex', gap: '0.35rem' }}>
                                                 <button className="btn btn-sm btn-outline" onClick={() => onSelectStock(s.ticker)} title="Graphique">
@@ -1059,17 +1059,17 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
                 <DirectionBadge direction={s.direction} />
             </td>
             <td style={{ fontWeight: 700 }}>{formatPrice(s.price)}</td>
-            <td>{s.rsi ? s.rsi.toFixed(1) : '—'}</td>
-            <td style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+            <td className="col-hide-sm">{s.rsi ? s.rsi.toFixed(1) : '—'}</td>
+            <td className="col-hide-md" style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
                 {s.sma_fast?.toFixed(3) || '—'} / {s.sma_slow?.toFixed(3) || '—'}
             </td>
-            <td className="text-up font-bold">
+            <td className="text-up font-bold col-hide-sm">
                 {s.target_price ? formatPrice(s.target_price) : '—'}
             </td>
-            <td className="text-down">
+            <td className="text-down col-hide-md">
                 {s.stop_loss ? formatPrice(s.stop_loss) : '—'}
             </td>
-            <td>
+            <td className="col-hide-sm">
                 <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                     {s.created_at ? s.created_at.slice(0, 16).replace('T', ' ') : '—'}
                 </div>
@@ -1213,11 +1213,11 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
                                             <th>Type de Signal</th>
                                             <th>Direction</th>
                                             <th>Prix Signal</th>
-                                            <th>RSI</th>
-                                            <th>SMA 20 / 50</th>
-                                            <th>Objectif Cible</th>
-                                            <th>Stop-Loss</th>
-                                            <th>Date & Heure</th>
+                                            <th className="col-hide-sm">RSI</th>
+                                            <th className="col-hide-md">SMA 20 / 50</th>
+                                            <th className="col-hide-sm">Objectif Cible</th>
+                                            <th className="col-hide-md">Stop-Loss</th>
+                                            <th className="col-hide-sm">Date & Heure</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -1240,11 +1240,11 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
                                     <th>Type de Signal</th>
                                     <th>Direction</th>
                                     <th>Prix Signal</th>
-                                    <th>RSI</th>
-                                    <th>SMA 20 / 50</th>
-                                    <th>Objectif Cible</th>
-                                    <th>Stop-Loss</th>
-                                    <th>Date & Heure</th>
+                                    <th className="col-hide-sm">RSI</th>
+                                    <th className="col-hide-md">SMA 20 / 50</th>
+                                    <th className="col-hide-sm">Objectif Cible</th>
+                                    <th className="col-hide-md">Stop-Loss</th>
+                                    <th className="col-hide-sm">Date & Heure</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -2165,6 +2165,12 @@ const App = () => {
 
     return (
         <div className="dashboard">
+            {/* Sidebar Mobile Backdrop Overlay */}
+            <div
+                className={`sidebar-backdrop ${sidebarOpen ? 'visible' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+            ></div>
+
             {/* Sidebar */}
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
@@ -2172,7 +2178,18 @@ const App = () => {
                         <i className="fas fa-chart-line"></i>
                         <span>BVMT</span>
                     </div>
-                    <button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                    <button
+                        className="sidebar-close-btn"
+                        onClick={() => setSidebarOpen(false)}
+                        title="Fermer le menu"
+                    >
+                        <i className="fas fa-times"></i>
+                    </button>
+                    <button
+                        className="sidebar-toggle"
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        title="Basculer le menu"
+                    >
                         <i className="fas fa-bars"></i>
                     </button>
                 </div>
@@ -2373,6 +2390,45 @@ const App = () => {
                     onToggleWatchlist={handleToggleWatchlist}
                 />
             )}
+
+            {/* Mobile Bottom Navigation Bar (Screens <= 768px) */}
+            <nav className="mobile-bottom-nav">
+                <button
+                    className={`mobile-nav-btn ${page === 'overview' ? 'active' : ''}`}
+                    onClick={() => { setPage('overview'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                    <i className="fas fa-th-large"></i>
+                    <span>Accueil</span>
+                </button>
+                <button
+                    className={`mobile-nav-btn ${page === 'stocks' ? 'active' : ''}`}
+                    onClick={() => { setPage('stocks'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                    <i className="fas fa-list-ul"></i>
+                    <span>Cote A-Z</span>
+                </button>
+                <button
+                    className={`mobile-nav-btn ${page === 'signals' ? 'active' : ''}`}
+                    onClick={() => { setPage('signals'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                    <i className="fas fa-bolt"></i>
+                    <span>Signaux</span>
+                </button>
+                <button
+                    className={`mobile-nav-btn ${page === 'watchlist' ? 'active' : ''}`}
+                    onClick={() => { setPage('watchlist'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                    <i className="fas fa-star"></i>
+                    <span>Favoris</span>
+                </button>
+                <button
+                    className={`mobile-nav-btn ${page === 'profile' ? 'active' : ''}`}
+                    onClick={() => { setPage('profile'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                    <i className="fab fa-telegram-plane"></i>
+                    <span>Telegram</span>
+                </button>
+            </nav>
         </div>
     );
 };
