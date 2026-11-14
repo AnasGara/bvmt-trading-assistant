@@ -52,6 +52,9 @@ def init_db():
                 hashed_password TEXT NOT NULL,
                 full_name TEXT NOT NULL DEFAULT '',
                 role TEXT NOT NULL DEFAULT 'user',
+                telegram_chat_id TEXT,
+                telegram_phone TEXT,
+                telegram_enabled INTEGER NOT NULL DEFAULT 1,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -96,6 +99,17 @@ def init_db():
             cursor.execute("ALTER TABLE signals ADD COLUMN description TEXT")
         except sqlite3.OperationalError:
             pass  # Column already exists
+
+        # Alter table migrations for users telegram columns
+        for col, col_type in [
+            ("telegram_chat_id", "TEXT"),
+            ("telegram_phone", "TEXT"),
+            ("telegram_enabled", "INTEGER NOT NULL DEFAULT 1")
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type}")
+            except sqlite3.OperationalError:
+                pass
 
         conn.commit()
 
@@ -284,7 +298,50 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
 def get_all_users() -> List[Dict[str, Any]]:
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, email, full_name, role, is_active, created_at FROM users ORDER BY created_at DESC")
+        cursor.execute("SELECT id, email, full_name, role, telegram_chat_id, telegram_phone, telegram_enabled, is_active, created_at FROM users ORDER BY created_at DESC")
+        return [dict(row) for row in cursor.fetchall()]
+
+def update_user_profile(
+    user_id: int,
+    full_name: Optional[str] = None,
+    telegram_chat_id: Optional[str] = None,
+    telegram_phone: Optional[str] = None,
+    telegram_enabled: Optional[bool] = None
+) -> bool:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        updates = []
+        params = []
+        if full_name is not None:
+            updates.append("full_name = ?")
+            params.append(full_name.strip())
+        if telegram_chat_id is not None:
+            updates.append("telegram_chat_id = ?")
+            params.append(telegram_chat_id.strip())
+        if telegram_phone is not None:
+            updates.append("telegram_phone = ?")
+            params.append(telegram_phone.strip())
+        if telegram_enabled is not None:
+            updates.append("telegram_enabled = ?")
+            params.append(1 if telegram_enabled else 0)
+
+        if not updates:
+            return False
+
+        params.append(user_id)
+        query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+        cursor.execute(query, params)
+        conn.commit()
+        return cursor.rowcount > 0
+
+def get_active_telegram_users() -> List[Dict[str, Any]]:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, email, full_name, telegram_chat_id, telegram_phone
+            FROM users
+            WHERE is_active = 1 AND telegram_enabled = 1 AND telegram_chat_id IS NOT NULL AND telegram_chat_id != ''
+        """)
         return [dict(row) for row in cursor.fetchall()]
 
 def update_user_role(user_id: int, role: str) -> bool:

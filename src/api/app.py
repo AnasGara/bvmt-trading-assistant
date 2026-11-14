@@ -41,14 +41,28 @@ async def lifespan(application: FastAPI):
 
         def scheduled_screening():
             logger.info("⏰ Running scheduled daily screening...")
-            from src.storage.db import create_screener_run, complete_screener_run, save_signal
+            from src.storage.db import (
+                create_screener_run, complete_screener_run, save_signal,
+                get_active_telegram_users, should_send_alert, record_alert
+            )
             from src.data.data_fetcher import fetch_equity_history
             from src.engine.screener import evaluate_signals
-            from config.settings import DEFAULT_WATCHLIST
+            from src.finance.cost_model import calculate_trade_cost
+            from src.alerts.telegram_bot import send_telegram_message, format_signal_message
+            from config.settings import DEFAULT_WATCHLIST, USE_CEA_TAX_SHIELD, TELEGRAM_CHAT_ID
 
             run_id = create_screener_run()
             total_signals = 0
             tickers_scanned = 0
+
+            # Get recipients
+            recipient_chat_ids = set()
+            if TELEGRAM_CHAT_ID:
+                recipient_chat_ids.add(str(TELEGRAM_CHAT_ID).strip())
+            for u in get_active_telegram_users():
+                if u.get("telegram_chat_id"):
+                    recipient_chat_ids.add(str(u["telegram_chat_id"]).strip())
+
             try:
                 for ticker in DEFAULT_WATCHLIST:
                     try:
@@ -59,6 +73,17 @@ async def lifespan(application: FastAPI):
                         signals = evaluate_signals(ticker, df)
                         for signal in signals:
                             total_signals += 1
+
+                            cost_info = None
+                            if signal.get("target_price"):
+                                cost_info = calculate_trade_cost(
+                                    entry_price=signal["price"],
+                                    exit_price=signal["target_price"],
+                                    quantity=100,
+                                    ticker=signal["ticker"],
+                                    use_cea=USE_CEA_TAX_SHIELD
+                                )
+
                             save_signal(
                                 ticker=signal["ticker"],
                                 signal_type=signal["signal_type"],
@@ -71,6 +96,19 @@ async def lifespan(application: FastAPI):
                                 stop_loss=signal.get("stop_loss"),
                                 description=signal.get("description"),
                             )
+
+                            if should_send_alert(signal["ticker"], signal["signal_type"]):
+                                msg = format_signal_message(signal, cost_info)
+                                sent_any = False
+                                for cid in recipient_chat_ids:
+                                    try:
+                                        if send_telegram_message(msg, chat_id=cid):
+                                            sent_any = True
+                                    except Exception as alert_err:
+                                        logger.error(f"Failed to alert chat {cid}: {alert_err}")
+                                if sent_any:
+                                    record_alert(signal["ticker"], signal["signal_type"], msg)
+
                     except Exception as e:
                         logger.error(f"Screener error for {ticker}: {e}")
                 complete_screener_run(run_id, tickers_scanned, total_signals, "completed")

@@ -1483,6 +1483,235 @@ const CalculatorView = ({ initialParams = {} }) => {
     );
 };
 
+// ─── Profile & Telegram Notifications View ─────────────────────────
+const ProfileTelegramView = ({ user, onUpdateUser }) => {
+    const [fullName, setFullName] = useState(user.full_name || '');
+    const [phone, setPhone] = useState(user.telegram_phone || '');
+    const [chatId, setChatId] = useState(user.telegram_chat_id || '');
+    const [enabled, setEnabled] = useState(user.telegram_enabled ?? true);
+    const [saving, setSaving] = useState(false);
+    const [testing, setTesting] = useState(false);
+    const [message, setMessage] = useState(null);
+    const [error, setError] = useState(null);
+
+    const handleSave = async (e) => {
+        if (e) e.preventDefault();
+        setSaving(true);
+        setMessage(null);
+        setError(null);
+        try {
+            const updated = await api.updateProfile({
+                full_name: fullName,
+                telegram_phone: phone,
+                telegram_chat_id: chatId,
+                telegram_enabled: enabled,
+            });
+            onUpdateUser(updated);
+            setMessage('Vos informations et paramètres Telegram ont été enregistrés avec succès !');
+        } catch (err) {
+            setError(err.message || 'Erreur lors de l\'enregistrement.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleTest = async () => {
+        if (!chatId.trim()) {
+            setError('Veuillez entrer votre Telegram Chat ID ci-dessous avant d\'envoyer un test.');
+            return;
+        }
+        setTesting(true);
+        setMessage(null);
+        setError(null);
+        try {
+            // Auto save first if modified
+            await api.updateProfile({
+                full_name: fullName,
+                telegram_phone: phone,
+                telegram_chat_id: chatId,
+                telegram_enabled: enabled,
+            });
+            const res = await api.testTelegram(chatId.trim());
+            setMessage(res.detail || 'Message Telegram envoyé avec succès ! Vérifiez votre application Telegram.');
+        } catch (err) {
+            setError(err.message || 'Impossible d\'envoyer le message Telegram.');
+        } finally {
+            setTesting(false);
+        }
+    };
+
+    return (
+        <div className="fade-in">
+            <div className="grid-2">
+                {/* Configuration Form Card */}
+                <div className="card">
+                    <div className="card-header">
+                        <div className="card-title">
+                            <i className="fab fa-telegram-plane" style={{ color: '#0088cc' }}></i> Paramètres de Notifications Telegram
+                        </div>
+                    </div>
+                    <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                        Configurez votre nom, numéro et identifiant Telegram pour recevoir instantanément chaque recommandation d'achat, de vente ou alerte sur les valeurs de la BVMT.
+                    </p>
+
+                    <form onSubmit={handleSave}>
+                        <div className="form-group">
+                            <label><i className="fas fa-user"></i> Nom Complet / Identité</label>
+                            <input
+                                type="text"
+                                placeholder="Ex: Mohamed Ben Ali"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label><i className="fas fa-phone"></i> Numéro de Téléphone (Mobile)</label>
+                            <input
+                                type="tel"
+                                placeholder="Ex: +216 98 123 456"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>
+                                <i className="fab fa-telegram"></i> Telegram Chat ID (Identifiant Numérique)
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Ex: 5969495647"
+                                value={chatId}
+                                onChange={(e) => setChatId(e.target.value.trim())}
+                            />
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.3rem' }}>
+                                Vous ne connaissez pas votre Chat ID ? Suivez le guide pratique sur la droite 👉
+                            </div>
+                        </div>
+
+                        <div className="form-group" style={{ paddingTop: '0.5rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={enabled}
+                                    onChange={(e) => setEnabled(e.target.checked)}
+                                    style={{ width: 'auto' }}
+                                />
+                                <span style={{ fontWeight: 600, color: enabled ? '#10b981' : '#94a3b8' }}>
+                                    {enabled ? '✅ Notifications Telegram Actives' : '⏸️ Notifications Telegram Suspendues'}
+                                </span>
+                            </label>
+                        </div>
+
+                        {message && (
+                            <div className="form-success" style={{ marginBottom: '1rem', background: 'rgba(16,185,129,0.12)', border: '1px solid #10b981', color: '#10b981', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+                                <i className="fas fa-check-circle"></i> {message}
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="form-error" style={{ marginBottom: '1rem' }}>
+                                <i className="fas fa-exclamation-triangle"></i> {error}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                            <button type="submit" className="btn btn-primary" disabled={saving}>
+                                <i className="fas fa-save"></i> {saving ? 'Enregistrement...' : 'Enregistrer mes Paramètres'}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={handleTest}
+                                disabled={testing || !chatId}
+                                title="Envoie un message de test sur votre Telegram"
+                            >
+                                <i className={`fab fa-telegram-plane ${testing ? 'fa-spin' : ''}`}></i>{' '}
+                                {testing ? 'Envoi...' : 'Tester la Réception Telegram'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {/* Step-by-Step Telegram Guide Card */}
+                <div className="card">
+                    <div className="card-header">
+                        <div className="card-title">
+                            <i className="fas fa-book-open" style={{ color: '#10b981' }}></i> Guide : Trouver son Telegram Chat ID en 30s
+                        </div>
+                    </div>
+
+                    <div className="telegram-guide-steps">
+                        <div className="telegram-step-item">
+                            <div className="step-circle">1</div>
+                            <div className="step-content">
+                                <strong>Démarrer le Bot Telegram du Service</strong>
+                                <p>
+                                    Ouvrez Telegram et recherchez le bot ou cliquez ci-dessous pour démarrer la conversation et autoriser l'envoi d'alertes :
+                                </p>
+                                <a
+                                    href="https://t.me/userinfobot"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-sm btn-outline"
+                                    style={{ marginTop: '0.4rem', borderColor: '#0088cc', color: '#0088cc' }}
+                                >
+                                    <i className="fab fa-telegram"></i> Ouvrir le Bot Telegram
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="telegram-step-item">
+                            <div className="step-circle">2</div>
+                            <div className="step-content">
+                                <strong>Obtenir votre identifiant numérique unique (Chat ID)</strong>
+                                <p>
+                                    Dans Telegram, ouvrez le bot officiel <code>@userinfobot</code> ou <code>@RawDataBot</code> et envoyez <code>/start</code>. Le bot vous répond immédiatement avec votre <strong>Id</strong> (un nombre comme <code>5969495647</code>).
+                                </p>
+                                <a
+                                    href="https://t.me/userinfobot"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-sm btn-outline"
+                                    style={{ marginTop: '0.4rem' }}
+                                >
+                                    <i className="fas fa-id-card"></i> Ouvrir @userinfobot
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="telegram-step-item">
+                            <div className="step-circle">3</div>
+                            <div className="step-content">
+                                <strong>Coller le Chat ID & Enregistrer</strong>
+                                <p>
+                                    Copiez votre numéro <strong>Id</strong>, collez-le dans le champ <em>Telegram Chat ID</em> sur la gauche, puis cliquez sur <strong>Enregistrer mes Paramètres</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="telegram-step-item">
+                            <div className="step-circle">4</div>
+                            <div className="step-content">
+                                <strong>Valider avec le bouton de test</strong>
+                                <p>
+                                    Cliquez sur <strong>Tester la Réception Telegram</strong>. Vous recevrez instantanément une notification de bienvenue sur votre téléphone !
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: '1.25rem', padding: '0.9rem', background: 'var(--bg-elevated)', borderRadius: '8px', fontSize: '0.8rem', color: '#94a3b8' }}>
+                        <i className="fas fa-shield-alt" style={{ color: '#10b981', marginRight: '0.4rem' }}></i>
+                        <strong>100% Gratuit & Sécurisé :</strong> Les notifications sont délivrées via l'API officielle de Telegram sans aucun intermédiaire tiers.
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Admin Users View ────────────────────────────────────────────────
 const AdminUsersView = () => {
     const [users, setUsers] = useState([]);
@@ -1731,7 +1960,7 @@ const AdminAlertsView = () => {
 const App = () => {
     const [user, setUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
-    const [page, setPage] = useState('stocks'); // Start directly on A-Z list or overview
+    const [page, setPage] = useState('overview'); // Tableau de Bord est la page d'atterrissage principale
     const [selectedTicker, setSelectedTicker] = useState(null);
     const [calculatorParams, setCalculatorParams] = useState({});
     const [watchlist, setWatchlist] = useState([]);
@@ -1951,19 +2180,19 @@ const App = () => {
                 <nav className="sidebar-nav">
                     <a
                         href="#"
-                        className={`nav-item ${page === 'stocks' ? 'active' : ''}`}
-                        onClick={(e) => { e.preventDefault(); setPage('stocks'); setSidebarOpen(false); }}
-                    >
-                        <i className="fas fa-list-ul"></i>
-                        <span>Cote A-Z (90 Titres)</span>
-                    </a>
-                    <a
-                        href="#"
                         className={`nav-item ${page === 'overview' ? 'active' : ''}`}
                         onClick={(e) => { e.preventDefault(); setPage('overview'); setSidebarOpen(false); }}
                     >
                         <i className="fas fa-th-large"></i>
                         <span>Tableau de Bord</span>
+                    </a>
+                    <a
+                        href="#"
+                        className={`nav-item ${page === 'stocks' ? 'active' : ''}`}
+                        onClick={(e) => { e.preventDefault(); setPage('stocks'); setSidebarOpen(false); }}
+                    >
+                        <i className="fas fa-list-ul"></i>
+                        <span>Cote A-Z (90 Titres)</span>
                     </a>
                     <a
                         href="#"
@@ -1988,6 +2217,14 @@ const App = () => {
                     >
                         <i className="fas fa-calculator"></i>
                         <span>Calculateur CEA</span>
+                    </a>
+                    <a
+                        href="#"
+                        className={`nav-item ${page === 'profile' ? 'active' : ''}`}
+                        onClick={(e) => { e.preventDefault(); setPage('profile'); setSidebarOpen(false); }}
+                    >
+                        <i className="fab fa-telegram-plane"></i>
+                        <span>Profil & Telegram</span>
                     </a>
 
                     {isAdmin && (
@@ -2023,7 +2260,7 @@ const App = () => {
                 </nav>
 
                 <div className="sidebar-footer">
-                    <div className="user-info">
+                    <div className="user-info" style={{ cursor: 'pointer' }} onClick={() => setPage('profile')}>
                         <div className="user-avatar">{(user.full_name || user.email)[0].toUpperCase()}</div>
                         <div className="user-details">
                             <span className="user-name">{user.full_name || user.email}</span>
@@ -2044,11 +2281,12 @@ const App = () => {
                             <i className="fas fa-bars"></i>
                         </button>
                         <h2>
-                            {page === 'stocks' && 'Cote Officielle des Actions BVMT (A-Z)'}
                             {page === 'overview' && 'Tableau de Bord Exécutif'}
+                            {page === 'stocks' && 'Cote Officielle des Actions BVMT (A-Z)'}
                             {page === 'signals' && 'Flux des Signaux & Recommandations'}
                             {page === 'watchlist' && 'Mes Actions Favorites'}
                             {page === 'calculator' && 'Simulateur de Frais & Avantage Fiscal CEA'}
+                            {page === 'profile' && 'Configuration Profil & Notifications Telegram'}
                             {page === 'admin-users' && 'Administration des Comptes'}
                             {page === 'admin-screener' && 'Planificateur & Contrôle Screener'}
                             {page === 'admin-alerts' && 'Historique des Notifications Telegram'}
@@ -2056,6 +2294,27 @@ const App = () => {
                     </div>
 
                     <div className="top-bar-right">
+                        {user.telegram_chat_id && user.telegram_enabled ? (
+                            <div
+                                className="market-status open"
+                                style={{ cursor: 'pointer', background: 'rgba(16, 185, 129, 0.12)', borderColor: '#10b981' }}
+                                onClick={() => setPage('profile')}
+                                title="Notifications Telegram configurées"
+                            >
+                                <i className="fab fa-telegram-plane" style={{ color: '#10b981' }}></i>
+                                <span style={{ color: '#10b981' }}>Telegram Actif</span>
+                            </div>
+                        ) : (
+                            <div
+                                className="market-status"
+                                style={{ cursor: 'pointer', borderColor: '#f59e0b', color: '#f59e0b' }}
+                                onClick={() => setPage('profile')}
+                                title="Cliquez pour configurer vos alertes Telegram"
+                            >
+                                <i className="fab fa-telegram-plane"></i>
+                                <span>Configurer Telegram</span>
+                            </div>
+                        )}
                         <div className="market-status open">
                             <span className="status-dot"></span>
                             <span>Bourse de Tunis · Connecté</span>
@@ -2064,17 +2323,17 @@ const App = () => {
                 </header>
 
                 <div className="content">
+                    {page === 'overview' && (
+                        <DashboardOverview
+                            onNavigate={(p) => setPage(p)}
+                            onSelectStock={(t) => setSelectedTicker(t)}
+                        />
+                    )}
                     {page === 'stocks' && (
                         <StocksAAZView
                             onSelectStock={(t) => setSelectedTicker(t)}
                             watchlist={watchlist}
                             onToggleWatchlist={handleToggleWatchlist}
-                        />
-                    )}
-                    {page === 'overview' && (
-                        <DashboardOverview
-                            onNavigate={(p) => setPage(p)}
-                            onSelectStock={(t) => setSelectedTicker(t)}
                         />
                     )}
                     {page === 'signals' && (
@@ -2092,6 +2351,12 @@ const App = () => {
                         />
                     )}
                     {page === 'calculator' && <CalculatorView initialParams={calculatorParams} />}
+                    {page === 'profile' && (
+                        <ProfileTelegramView
+                            user={user}
+                            onUpdateUser={(updated) => setUser(updated)}
+                        />
+                    )}
                     {page === 'admin-users' && <AdminUsersView />}
                     {page === 'admin-screener' && <AdminScreenerView />}
                     {page === 'admin-alerts' && <AdminAlertsView />}

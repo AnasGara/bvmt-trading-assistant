@@ -19,8 +19,20 @@ class UserOut(BaseModel):
     email: str
     full_name: str
     role: str
+    telegram_chat_id: Optional[str] = None
+    telegram_phone: Optional[str] = None
+    telegram_enabled: bool = True
     is_active: bool
     created_at: Optional[str] = None
+
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    telegram_phone: Optional[str] = None
+    telegram_enabled: Optional[bool] = None
+
+class TelegramTestRequest(BaseModel):
+    chat_id: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str

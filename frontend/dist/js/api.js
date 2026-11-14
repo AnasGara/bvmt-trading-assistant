@@ -112,6 +112,14 @@ class APIClient {
         return this.get('/auth/me');
     }
 
+    async updateProfile(profileData) {
+        return this.put('/auth/profile', profileData);
+    }
+
+    async testTelegram(chatId = null) {
+        return this.post('/auth/telegram-test', { chat_id: chatId });
+    }
+
     // ─── Market & Stocks A-Z ─────────────────────────────────────
 
     async getStocks(refresh = false) {

@@ -146,6 +146,33 @@ class TestBVMTAPI(unittest.TestCase):
         res_check = self.client.get(f"/api/signals/{test_sig['id']}", headers=headers)
         self.assertEqual(res_check.status_code, 404)
 
+    def test_user_profile_and_telegram_settings(self):
+        res_login = self.client.post("/api/auth/login", json={
+            "email": "admin@bvmt.tn",
+            "password": "admin123"
+        })
+        token = res_login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Update profile with full name, phone, chat ID
+        res_update = self.client.put("/api/auth/profile", headers=headers, json={
+            "full_name": "Anas Trading",
+            "telegram_phone": "+216 98 000 111",
+            "telegram_chat_id": "5969495647",
+            "telegram_enabled": True
+        })
+        self.assertEqual(res_update.status_code, 200)
+        data = res_update.json()
+        self.assertEqual(data["full_name"], "Anas Trading")
+        self.assertEqual(data["telegram_phone"], "+216 98 000 111")
+        self.assertEqual(data["telegram_chat_id"], "5969495647")
+        self.assertTrue(data["telegram_enabled"])
+
+        # Check /me reflects changes
+        res_me = self.client.get("/api/auth/me", headers=headers)
+        self.assertEqual(res_me.status_code, 200)
+        self.assertEqual(res_me.json()["telegram_chat_id"], "5969495647")
+
     def test_static_files_serving(self):
         res_html = self.client.get("/")
         self.assertEqual(res_html.status_code, 200)
