@@ -40,39 +40,105 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bvmt.tn")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 # Default Watchlist of major liquid equities on BVMT (Ilboursa tickers)
+# Includes all 43 actively traded liquid stocks of the Bourse de Tunis
 DEFAULT_WATCHLIST = [
+    # Banques & Services Financiers
     "BIAT",      # Banque Internationale Arabe de Tunisie
-    "SFBT",      # Société Frigorifique et Brasserie de Tunis
     "TJARI",     # Attijari Bank
     "BT",        # Banque de Tunisie
-    "SAH",       # SAH Lilas
-    "CC",        # Carthage Cement
-    "TPR",       # Tunisie Profilés Aluminium
-    "OTH",       # One Tech Holding
-    "ECYCL",     # Euro-Cycles
-    "UIB",       # Union Internationale de Banques
     "BNA",       # Banque Nationale Agricole
+    "UIB",       # Union Internationale de Banques
     "BH",        # BH Bank
     "AB",        # Amen Bank
-    "ARTES",     # ARTES
-    "DH"         # Délice Holding
+    "ATB",       # Arab Tunisian Bank
+    "BTE",       # Banque de Tunisie et des Emirats
+    "STB",       # Société Tunisienne de Banque
+    # Leasing & Factoring
+    "ATL",       # Arab Tunisian Lease
+    "TJL",       # Attijari Leasing
+    "CIL",       # Compagnie Internationale de Leasing
+    "HL",        # Hannibal Lease
+    # Assurances & Réassurance
+    "AST",       # Assurances Maghrebia
+    "ASSMA",     # Maghrebia Vie
+    "BHASS",     # BH Assurance
+    "TRE",       # Société Tunisienne de Réassurance
+    # Agroalimentaire & Boissons
+    "SFBT",      # Société Frigorifique et Brasserie de Tunis
+    "DH",        # Délice Holding
+    "LNDOR",     # Land'Or
+    # Biens de Consommation & Pharmacie
+    "SAH",       # SAH Lilas
+    "ECYCL",     # Euro-Cycles
+    "SAM",       # SAM
+    "NBL",       # New Body Line
+    # Bâtiment & Matériaux de Construction
+    "CC",        # Carthage Cement
+    "TPR",       # Tunisie Profilés Aluminium
+    "SOMOC",     # Somocer
+    # Holdings & Industrie
+    "OTH",       # One Tech Holding
+    "PGH",       # Poulina Group Holding
+    "SIAME",     # SIAME
+    "ICF",       # Industries Chimiques du Fluor
+    "STPAP",     # SOTIPAPIER
+    "AL",        # Air Liquide Tunisie
+    "ASSAD",     # Accumulateur Assad
+    "CELL",      # Cellcom
+    "MPBS",      # Manufacture de Panneaux Bois du Sud
+    # Automobile & Équipement
+    "ARTES",     # ARTES Automobiles
+    "CITY",      # City Cars
+    "NAKL",      # Ennakl Automobiles
+    "STA",       # Société Tunisienne d'Automobiles
+    # Distribution & Transport
+    "MAG",       # Magasin Général
+    "TAIR",      # Tunisair
 ]
 
 # Ticker display names
 TICKER_NAMES = {
     "BIAT": "Banque Internationale Arabe de Tunisie",
-    "SFBT": "Société Frigorifique et Brasserie de Tunis",
     "TJARI": "Attijari Bank",
     "BT": "Banque de Tunisie",
-    "SAH": "SAH Lilas",
-    "CC": "Carthage Cement",
-    "TPR": "Tunisie Profilés Aluminium",
-    "OTH": "One Tech Holding",
-    "ECYCL": "Euro-Cycles",
-    "UIB": "Union Internationale de Banques",
     "BNA": "Banque Nationale Agricole",
+    "UIB": "Union Internationale de Banques",
     "BH": "BH Bank",
     "AB": "Amen Bank",
-    "ARTES": "ARTES Automobiles",
+    "ATB": "Arab Tunisian Bank",
+    "BTE": "Banque de Tunisie et des Emirats",
+    "STB": "Société Tunisienne de Banque",
+    "ATL": "Arab Tunisian Lease",
+    "TJL": "Attijari Leasing",
+    "CIL": "Compagnie Internationale de Leasing",
+    "HL": "Hannibal Lease",
+    "AST": "Assurances Maghrebia",
+    "ASSMA": "Maghrebia Vie",
+    "BHASS": "BH Assurance",
+    "TRE": "Société Tunisienne de Réassurance",
+    "SFBT": "Société Frigorifique et Brasserie de Tunis",
     "DH": "Délice Holding",
+    "LNDOR": "Land'Or",
+    "SAH": "SAH Lilas",
+    "ECYCL": "Euro-Cycles",
+    "SAM": "SAM",
+    "NBL": "New Body Line",
+    "CC": "Carthage Cement",
+    "TPR": "Tunisie Profilés Aluminium",
+    "SOMOC": "Somocer",
+    "OTH": "One Tech Holding",
+    "PGH": "Poulina Group Holding",
+    "SIAME": "SIAME",
+    "ICF": "Industries Chimiques du Fluor",
+    "STPAP": "SOTIPAPIER",
+    "AL": "Air Liquide Tunisie",
+    "ASSAD": "Accumulateur Assad",
+    "CELL": "Cellcom",
+    "MPBS": "Manufacture de Panneaux Bois du Sud",
+    "ARTES": "ARTES Automobiles",
+    "CITY": "City Cars",
+    "NAKL": "Ennakl Automobiles",
+    "STA": "Société Tunisienne d'Automobiles",
+    "MAG": "Magasin Général",
+    "TAIR": "Tunisair",
 }

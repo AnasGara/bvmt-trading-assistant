@@ -1888,7 +1888,7 @@ const AdminScreenerView = () => {
                     </p>
                     {status?.is_running ? (
                         <div style={{ fontSize: '0.82rem', color: '#3b82f6', marginTop: '0.35rem', fontWeight: 600 }}>
-                            <i className="fas fa-spinner fa-spin"></i> Analyse en temps réel des 15 actions (~15-20s)... Les résultats s'afficheront dès la fin.
+                            <i className="fas fa-spinner fa-spin"></i> Analyse en temps réel des 43 actions cotées (~20s)... Les résultats s'afficheront dès la fin.
                         </div>
                     ) : status?.last_run && (
                         <div style={{ fontSize: '0.8rem', color: status.last_run.status === 'failed' ? '#ef4444' : '#10b981', marginTop: '0.25rem' }}>
