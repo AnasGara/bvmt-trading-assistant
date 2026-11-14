@@ -42,13 +42,16 @@ def _run_screening_task(run_id: int):
             if cid:
                 recipient_chat_ids.add(str(cid).strip())
 
+        successful_fetches = 0
         for ticker in DEFAULT_WATCHLIST:
             try:
                 df = fetch_equity_history(ticker, days=180)
                 tickers_scanned += 1
                 if df is None or df.empty:
+                    logger.warning(f"Could not retrieve historical data for {ticker}")
                     continue
 
+                successful_fetches += 1
                 signals = evaluate_signals(ticker, df)
                 for signal in signals:
                     total_signals += 1
@@ -92,7 +95,12 @@ def _run_screening_task(run_id: int):
             except Exception as e:
                 logger.error(f"Error screening {ticker}: {e}")
 
-        complete_screener_run(run_id, tickers_scanned, total_signals, status="completed")
+        if successful_fetches == 0 and tickers_scanned > 0:
+            error_msg = "Impossible de récupérer les cours d'Ilboursa depuis ce serveur (Statut HTTP 403 / restriction IP hébergeur). Aucun titre analysé."
+            logger.error(error_msg)
+            complete_screener_run(run_id, tickers_scanned, total_signals, status="failed", error_message=error_msg)
+        else:
+            complete_screener_run(run_id, tickers_scanned, total_signals, status="completed")
     except Exception as e:
         logger.error(f"Screener run {run_id} failed: {e}")
         complete_screener_run(run_id, tickers_scanned, total_signals, status="failed", error_message=str(e))

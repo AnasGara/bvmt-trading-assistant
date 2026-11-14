@@ -1817,27 +1817,55 @@ const AdminScreenerView = () => {
     const [status, setStatus] = useState(null);
     const [history, setHistory] = useState([]);
     const [triggering, setTriggering] = useState(false);
+    const pollIntervalRef = useRef(null);
 
     const loadData = async () => {
         try {
             const [st, hist] = await Promise.all([api.getScreenerStatus(), api.getScreenerHistory()]);
             setStatus(st);
             setHistory(hist || []);
+            return st;
         } catch (err) {
             console.error(err);
+            return null;
         }
     };
 
     useEffect(() => {
         loadData();
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        };
     }, []);
+
+    // Active polling while screener is running
+    useEffect(() => {
+        if (status?.is_running) {
+            if (!pollIntervalRef.current) {
+                pollIntervalRef.current = setInterval(async () => {
+                    const updated = await loadData();
+                    if (updated && !updated.is_running) {
+                        clearInterval(pollIntervalRef.current);
+                        pollIntervalRef.current = null;
+                    }
+                }, 2000);
+            }
+        } else {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+        }
+    }, [status?.is_running]);
 
     const triggerRun = async () => {
         try {
             setTriggering(true);
             await api.runScreener();
-            alert('Screener démarré en arrière-plan !');
-            setTimeout(loadData, 2000);
+            const st = await loadData();
+            if (st && st.is_running) {
+                // Polling effect will automatically track until completed
+            }
         } catch (err) {
             alert(err.message);
         } finally {
@@ -1858,22 +1886,57 @@ const AdminScreenerView = () => {
                     <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
                         Planification automatique : <strong>14:30 CET (Lundi à Vendredi)</strong> après clôture BVMT.
                     </p>
-                    {status?.last_run && (
-                        <div style={{ fontSize: '0.8rem', color: '#10b981', marginTop: '0.25rem' }}>
-                            Dernier scan : {timeAgo(status.last_run.started_at)} ({status.last_run.signals_found} signaux générés)
+                    {status?.is_running ? (
+                        <div style={{ fontSize: '0.82rem', color: '#3b82f6', marginTop: '0.35rem', fontWeight: 600 }}>
+                            <i className="fas fa-spinner fa-spin"></i> Analyse en temps réel des 15 actions (~15-20s)... Les résultats s'afficheront dès la fin.
+                        </div>
+                    ) : status?.last_run && (
+                        <div style={{ fontSize: '0.8rem', color: status.last_run.status === 'failed' ? '#ef4444' : '#10b981', marginTop: '0.25rem' }}>
+                            Dernier scan : {timeAgo(status.last_run.completed_at || status.last_run.started_at)} ({status.last_run.signals_found} signaux générés)
                         </div>
                     )}
                 </div>
-                <button className="btn btn-primary" onClick={triggerRun} disabled={triggering || status?.is_running}>
-                    <i className="fas fa-play"></i> Lancer le Scan Maintenant
+                <button
+                    className="btn btn-primary"
+                    onClick={triggerRun}
+                    disabled={triggering || status?.is_running}
+                >
+                    <i className={`fas ${status?.is_running ? 'fa-spinner fa-spin' : 'fa-play'}`}></i>{' '}
+                    {status?.is_running ? 'Scan en Cours...' : 'Lancer le Scan Maintenant'}
                 </button>
             </div>
+
+            {status?.is_running && (
+                <div
+                    className="signal-callout-card fade-in"
+                    style={{
+                        borderColor: '#3b82f6',
+                        background: 'rgba(59, 130, 246, 0.08)',
+                        marginBottom: '1.5rem',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <i className="fas fa-circle-notch fa-spin" style={{ color: '#3b82f6', fontSize: '1.2rem' }}></i>
+                        <div>
+                            <strong style={{ color: '#f1f5f9', fontSize: '0.92rem' }}>
+                                Analyse Algorithmique en Direct
+                            </strong>
+                            <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                                Le screener extrait les historiques de cours sur Ilboursa, évalue les moyennes mobiles (SMA 20/50), le RSI(14) et les cassures de volume. Actualisation automatique...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="card">
                 <div className="card-header">
                     <div className="card-title">
                         <i className="fas fa-history"></i> Historique des Exécutions du Screener
                     </div>
+                    <button className="btn btn-sm btn-outline" onClick={loadData}>
+                        <i className="fas fa-sync-alt"></i> Actualiser
+                    </button>
                 </div>
                 <div className="table-wrapper">
                     <table>
@@ -1891,9 +1954,26 @@ const AdminScreenerView = () => {
                                 <tr key={r.id}>
                                     <td style={{ color: '#64748b' }}>#{r.id}</td>
                                     <td>
-                                        <span className={`badge ${r.status === 'completed' ? 'badge-success' : 'badge-danger'}`}>
-                                            {r.status}
-                                        </span>
+                                        {r.status === 'completed' && (
+                                            <span className="badge badge-buy">
+                                                <i className="fas fa-check"></i> Terminé
+                                            </span>
+                                        )}
+                                        {r.status === 'running' && (
+                                            <span className="badge badge-watch">
+                                                <i className="fas fa-spinner fa-spin"></i> En cours
+                                            </span>
+                                        )}
+                                        {r.status === 'failed' && (
+                                            <span className="badge badge-sell">
+                                                <i className="fas fa-times"></i> Échoué
+                                            </span>
+                                        )}
+                                        {r.error_message && (
+                                            <div style={{ fontSize: '0.72rem', color: '#ef4444', marginTop: '0.2rem', maxWidth: '240px' }}>
+                                                {r.error_message}
+                                            </div>
+                                        )}
                                     </td>
                                     <td>{r.tickers_scanned}</td>
                                     <td style={{ fontWeight: 700 }}>{r.signals_found}</td>
