@@ -2088,7 +2088,7 @@ const App = () => {
                                 <input
                                     type="email"
                                     required
-                                    placeholder="admin@bvmt.tn"
+                                    placeholder="vous@exemple.tn"
                                     value={authEmail}
                                     onChange={(e) => setAuthEmail(e.target.value)}
                                 />
@@ -2110,9 +2110,6 @@ const App = () => {
                             <p className="auth-switch">
                                 Nouveau ? <a href="#" onClick={() => { setAuthMode('register'); setAuthError(''); }}>Créer un compte</a>
                             </p>
-                            <div style={{ marginTop: '1rem', fontSize: '0.78rem', color: '#64748b', textAlign: 'center' }}>
-                                Démo Admin : <code>admin@bvmt.tn</code> / <code>admin123</code>
-                            </div>
                         </form>
                     ) : (
                         <form onSubmit={handleRegister} className="auth-form">
