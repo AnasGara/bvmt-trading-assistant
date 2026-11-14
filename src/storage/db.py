@@ -139,7 +139,7 @@ def save_signal(
 def get_signals(
     ticker: Optional[str] = None, signal_type: Optional[str] = None,
     direction: Optional[str] = None, date_from: Optional[str] = None,
-    date_to: Optional[str] = None, limit: int = 50, offset: int = 0
+    date_to: Optional[str] = None, sort_order: str = "desc", limit: int = 50, offset: int = 0
 ) -> List[Dict[str, Any]]:
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -162,12 +162,30 @@ def get_signals(
             conditions.append("created_at <= ?")
             params.append(date_to)
 
+        order = "ASC" if str(sort_order).lower() == "asc" else "DESC"
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-        query = f"SELECT * FROM signals {where} ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        query = f"SELECT * FROM signals {where} ORDER BY created_at {order} LIMIT ? OFFSET ?"
         params.extend([limit, offset])
 
         cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
+
+def delete_signal_by_id(signal_id: int) -> bool:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM signals WHERE id = ?", (signal_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+
+def clear_all_signals(ticker: Optional[str] = None) -> int:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        if ticker:
+            cursor.execute("DELETE FROM signals WHERE ticker = ?", (ticker.upper(),))
+        else:
+            cursor.execute("DELETE FROM signals")
+        conn.commit()
+        return cursor.rowcount
 
 def get_signal_by_id(signal_id: int) -> Optional[Dict[str, Any]]:
     with get_connection() as conn:

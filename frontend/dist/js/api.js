@@ -160,6 +160,15 @@ class APIClient {
         return this.get(`/signals/${id}`);
     }
 
+    async deleteSignal(id) {
+        return this.del(`/signals/${id}`);
+    }
+
+    async clearSignals(ticker = null) {
+        const query = ticker ? `?ticker=${encodeURIComponent(ticker)}` : '';
+        return this.del(`/signals${query}`);
+    }
+
     // ─── Watchlist ───────────────────────────────────────────────
 
     async getWatchlist() {

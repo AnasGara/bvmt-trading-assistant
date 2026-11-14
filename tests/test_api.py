@@ -118,6 +118,34 @@ class TestBVMTAPI(unittest.TestCase):
         self.assertIn("history", data)
         self.assertIn("indicators", data)
 
+    def test_delete_and_sort_signals(self):
+        res_login = self.client.post("/api/auth/login", json={
+            "email": "admin@bvmt.tn",
+            "password": "admin123"
+        })
+        token = res_login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Add a test signal
+        from src.storage.db import save_signal
+        save_signal(ticker="TEST", signal_type="GOLDEN_CROSS", direction="BUY", price=10.5)
+
+        # Get signals sorted
+        res_list = self.client.get("/api/signals?sort_order=desc", headers=headers)
+        self.assertEqual(res_list.status_code, 200)
+        signals = res_list.json()["signals"]
+        self.assertGreater(len(signals), 0)
+        test_sig = next((s for s in signals if s["ticker"] == "TEST"), None)
+        self.assertIsNotNone(test_sig)
+
+        # Delete the test signal
+        res_del = self.client.delete(f"/api/signals/{test_sig['id']}", headers=headers)
+        self.assertEqual(res_del.status_code, 200)
+
+        # Verify it's gone
+        res_check = self.client.get(f"/api/signals/{test_sig['id']}", headers=headers)
+        self.assertEqual(res_check.status_code, 404)
+
     def test_static_files_serving(self):
         res_html = self.client.get("/")
         self.assertEqual(res_html.status_code, 200)

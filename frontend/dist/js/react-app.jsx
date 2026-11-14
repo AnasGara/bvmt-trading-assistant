@@ -724,20 +724,31 @@ const DashboardOverview = ({ onNavigate, onSelectStock }) => {
     const [latest, setLatest] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const loadData = async () => {
+        try {
+            const [sum, lat] = await Promise.all([api.getSignalSummary(), api.getLatestSignals()]);
+            setSummary(sum);
+            setLatest(lat || []);
+        } catch (err) {
+            console.error('Error loading summary:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const load = async () => {
-            try {
-                const [sum, lat] = await Promise.all([api.getSignalSummary(), api.getLatestSignals()]);
-                setSummary(sum);
-                setLatest(lat || []);
-            } catch (err) {
-                console.error('Error loading summary:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
+        loadData();
     }, []);
+
+    const handleDeleteSignal = async (id, symbol) => {
+        if (!confirm(`Supprimer la recommandation pour ${symbol} ?`)) return;
+        try {
+            await api.deleteSignal(id);
+            loadData();
+        } catch (err) {
+            alert(err.message || 'Erreur');
+        }
+    };
 
     if (loading) {
         return (
@@ -908,9 +919,14 @@ const DashboardOverview = ({ onNavigate, onSelectStock }) => {
                                         <td className="text-down">{s.stop_loss ? formatPrice(s.stop_loss) : '—'}</td>
                                         <td style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{timeAgo(s.created_at)}</td>
                                         <td>
-                                            <button className="btn btn-sm btn-outline" onClick={() => onSelectStock(s.ticker)}>
-                                                Graphique
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                                <button className="btn btn-sm btn-outline" onClick={() => onSelectStock(s.ticker)} title="Graphique">
+                                                    <i className="fas fa-chart-line"></i>
+                                                </button>
+                                                <button className="btn btn-sm btn-danger" onClick={() => handleDeleteSignal(s.id, s.ticker)} title="Supprimer la recommandation">
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -936,6 +952,8 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
     const [direction, setDirection] = useState('');
     const [signalType, setSignalType] = useState('');
     const [ticker, setTicker] = useState('');
+    const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (plus récent) ou 'asc' (plus ancien)
+    const [groupByDate, setGroupByDate] = useState(true); // Regroupement chronologique
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
@@ -947,8 +965,9 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
                 direction: direction || undefined,
                 signal_type: signalType || undefined,
                 ticker: ticker || undefined,
+                sort_order: sortOrder,
                 page,
-                page_size: 15,
+                page_size: 25,
             });
             setSignals(res.signals || []);
             setTotalPages(res.total_pages || 1);
@@ -962,10 +981,173 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
 
     useEffect(() => {
         loadSignals();
-    }, [direction, signalType, page]);
+    }, [direction, signalType, sortOrder, page]);
+
+    const handleDeleteSignal = async (id, symbol) => {
+        if (!confirm(`Supprimer la recommandation #${id} pour ${symbol} ?`)) return;
+        try {
+            await api.deleteSignal(id);
+            loadSignals();
+        } catch (err) {
+            alert(err.message || 'Erreur lors de la suppression.');
+        }
+    };
+
+    const handleClearAll = async () => {
+        if (!confirm('Êtes-vous sûr de vouloir supprimer TOUTES les recommandations ? Cette action est irréversible.')) return;
+        try {
+            await api.clearSignals();
+            loadSignals();
+        } catch (err) {
+            alert(err.message || 'Erreur lors de la suppression.');
+        }
+    };
+
+    // Grouping signals by date
+    const groupedSignals = useMemo(() => {
+        if (!groupByDate) return null;
+        const groups = {};
+        signals.forEach((s) => {
+            const dateKey = s.created_at ? s.created_at.slice(0, 10) : 'Autre';
+            if (!groups[dateKey]) {
+                groups[dateKey] = [];
+            }
+            groups[dateKey].push(s);
+        });
+        return groups;
+    }, [signals, groupByDate]);
+
+    const formatDateHeader = (dateStr) => {
+        if (!dateStr || dateStr === 'Autre') return 'Date Non Spécifiée';
+        try {
+            const d = new Date(dateStr + 'T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const formatted = d.toLocaleDateString('fr-TN', options);
+
+            if (d.toDateString() === today.toDateString()) {
+                return `📅 Aujourd'hui — ${formatted}`;
+            }
+            if (d.toDateString() === yesterday.toDateString()) {
+                return `📅 Hier — ${formatted}`;
+            }
+            return `📅 ${formatted}`;
+        } catch {
+            return dateStr;
+        }
+    };
+
+    const renderSignalRow = (s) => (
+        <tr key={s.id}>
+            <td>
+                <span
+                    className="ticker-tag"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => onSelectStock(s.ticker)}
+                >
+                    {s.ticker}
+                </span>
+            </td>
+            <td>
+                <SignalBadge type={s.signal_type} />
+            </td>
+            <td>
+                <DirectionBadge direction={s.direction} />
+            </td>
+            <td style={{ fontWeight: 700 }}>{formatPrice(s.price)}</td>
+            <td>{s.rsi ? s.rsi.toFixed(1) : '—'}</td>
+            <td style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                {s.sma_fast?.toFixed(3) || '—'} / {s.sma_slow?.toFixed(3) || '—'}
+            </td>
+            <td className="text-up font-bold">
+                {s.target_price ? formatPrice(s.target_price) : '—'}
+            </td>
+            <td className="text-down">
+                {s.stop_loss ? formatPrice(s.stop_loss) : '—'}
+            </td>
+            <td>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                    {s.created_at ? s.created_at.slice(0, 16).replace('T', ' ') : '—'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    {timeAgo(s.created_at)}
+                </div>
+            </td>
+            <td>
+                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                    <button
+                        className="btn btn-sm btn-outline"
+                        title="Voir graphique et cotation"
+                        onClick={() => onSelectStock(s.ticker)}
+                    >
+                        <i className="fas fa-chart-line"></i>
+                    </button>
+                    <button
+                        className="btn btn-sm btn-outline"
+                        title="Simuler frais et gain net"
+                        onClick={() =>
+                            onSimulateTrade({
+                                ticker: s.ticker,
+                                entry: s.price,
+                                exit: s.target_price || (s.price * 1.05).toFixed(3),
+                            })
+                        }
+                    >
+                        <i className="fas fa-calculator"></i>
+                    </button>
+                    <button
+                        className="btn btn-sm btn-danger"
+                        title="Supprimer cette recommandation"
+                        onClick={() => handleDeleteSignal(s.id, s.ticker)}
+                    >
+                        <i className="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    );
 
     return (
         <div className="fade-in">
+            {/* Top Toolbar */}
+            <div className="aaz-header-bar">
+                <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                        <i className="fas fa-bolt" style={{ color: '#10b981', marginRight: '0.5rem' }}></i>
+                        Recommandations & Signaux Classés par Date
+                    </h3>
+                    <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                        Historique complet des signaux algorithmiques générés. Vous pouvez classer par date et supprimer les signaux.
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                        className={`btn btn-sm ${groupByDate ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setGroupByDate(!groupByDate)}
+                        title="Activer/désactiver le groupement par journée"
+                    >
+                        <i className="fas fa-calendar-alt"></i> {groupByDate ? 'Groupé par Date' : 'Vue Liste'}
+                    </button>
+                    <button
+                        className="btn btn-sm btn-outline"
+                        onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                        title="Inverser l'ordre chronologique"
+                    >
+                        <i className={`fas fa-sort-amount-${sortOrder === 'desc' ? 'down' : 'up'}`}></i>{' '}
+                        {sortOrder === 'desc' ? 'Plus Récent D\'abord' : 'Plus Ancien D\'abord'}
+                    </button>
+                    {totalCount > 0 && (
+                        <button className="btn btn-sm btn-danger" onClick={handleClearAll} title="Purger toutes les recommandations">
+                            <i className="fas fa-trash-alt"></i> Vider les Recommandations
+                        </button>
+                    )}
+                </div>
+            </div>
+
             {/* Filter Bar */}
             <div className="filter-bar">
                 <select value={direction} onChange={(e) => { setDirection(e.target.value); setPage(1); }}>
@@ -998,7 +1180,7 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
                 </button>
 
                 <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: '#94a3b8' }}>
-                    {totalCount} signal(aux) trouvé(s)
+                    {totalCount} recommandation(s)
                 </span>
             </div>
 
@@ -1009,10 +1191,46 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
             ) : signals.length === 0 ? (
                 <div className="empty-state">
                     <i className="fas fa-filter"></i>
-                    <h3>Aucun signal ne correspond aux critères</h3>
-                    <p>Essayez de réinitialiser vos filtres.</p>
+                    <h3>Aucune recommandation trouvée</h3>
+                    <p>Aucun signal ne correspond à vos filtres ou les signaux ont été effacés.</p>
+                </div>
+            ) : groupByDate && groupedSignals ? (
+                /* Grouped by Date View */
+                <div className="date-grouped-container">
+                    {Object.entries(groupedSignals).map(([dateKey, list]) => (
+                        <div key={dateKey} className="card date-group-card" style={{ marginBottom: '1.5rem' }}>
+                            <div className="card-header date-group-header">
+                                <div className="card-title" style={{ fontSize: '1rem', color: '#10b981' }}>
+                                    {formatDateHeader(dateKey)}
+                                </div>
+                                <span className="badge badge-info">{list.length} recommandation(s)</span>
+                            </div>
+                            <div className="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Symbole</th>
+                                            <th>Type de Signal</th>
+                                            <th>Direction</th>
+                                            <th>Prix Signal</th>
+                                            <th>RSI</th>
+                                            <th>SMA 20 / 50</th>
+                                            <th>Objectif Cible</th>
+                                            <th>Stop-Loss</th>
+                                            <th>Date & Heure</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {list.map(renderSignalRow)}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : (
+                /* Flat Table View */
                 <div className="card">
                     <div className="table-wrapper">
                         <table>
@@ -1026,66 +1244,12 @@ const SignalsView = ({ onSelectStock, onSimulateTrade }) => {
                                     <th>SMA 20 / 50</th>
                                     <th>Objectif Cible</th>
                                     <th>Stop-Loss</th>
-                                    <th>Détecté</th>
+                                    <th>Date & Heure</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {signals.map((s) => (
-                                    <tr key={s.id}>
-                                        <td>
-                                            <span
-                                                className="ticker-tag"
-                                                style={{ cursor: 'pointer' }}
-                                                onClick={() => onSelectStock(s.ticker)}
-                                            >
-                                                {s.ticker}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <SignalBadge type={s.signal_type} />
-                                        </td>
-                                        <td>
-                                            <DirectionBadge direction={s.direction} />
-                                        </td>
-                                        <td style={{ fontWeight: 700 }}>{formatPrice(s.price)}</td>
-                                        <td>{s.rsi ? s.rsi.toFixed(1) : '—'}</td>
-                                        <td style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                                            {s.sma_fast?.toFixed(3) || '—'} / {s.sma_slow?.toFixed(3) || '—'}
-                                        </td>
-                                        <td className="text-up font-bold">
-                                            {s.target_price ? formatPrice(s.target_price) : '—'}
-                                        </td>
-                                        <td className="text-down">
-                                            {s.stop_loss ? formatPrice(s.stop_loss) : '—'}
-                                        </td>
-                                        <td style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{timeAgo(s.created_at)}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                                <button
-                                                    className="btn btn-sm btn-outline"
-                                                    title="Voir graphique et cotation"
-                                                    onClick={() => onSelectStock(s.ticker)}
-                                                >
-                                                    <i className="fas fa-chart-line"></i>
-                                                </button>
-                                                <button
-                                                    className="btn btn-sm btn-outline"
-                                                    title="Simuler frais et gain net"
-                                                    onClick={() =>
-                                                        onSimulateTrade({
-                                                            ticker: s.ticker,
-                                                            entry: s.price,
-                                                            exit: s.target_price || (s.price * 1.05).toFixed(3),
-                                                        })
-                                                    }
-                                                >
-                                                    <i className="fas fa-calculator"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {signals.map(renderSignalRow)}
                             </tbody>
                         </table>
                     </div>
