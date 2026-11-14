@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: bvmt-trading-assistant
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@bvmt.tn
+      - key: ADMIN_PASSWORD
+        value: admin123
+      - key: BROKER_FEE_PCT
+        value: 0.006
+      - key: EXCHANGE_FEE_PCT
+        value: 0.15
+      - key: TVA_PCT
+        value: 0.19
+      - key: USE_CEA_TAX_SHIELD
+        value: true
